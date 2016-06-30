@@ -16,8 +16,7 @@ database:
 # The settings below configure the dropwizard-configurable-assets-bundle.
 assets:
   overrides:
-    /: ../../../<%= slug %>-app/build/src
-    /bower_components/: ../../../<%= slug %>-app/bower_components
+    /: web/
   mimeTypes:
     eot: application/vnd.ms-fontobject
     ttf: application/font-sfnt
