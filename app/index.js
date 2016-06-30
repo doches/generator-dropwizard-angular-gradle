@@ -68,6 +68,7 @@ module.exports = yeoman.generators.Base.extend({
                 "gradlew",
                 "gradlew.bat",
                 "settings.gradle",
+                "package.json",
                 "gradle/idea.gradle",
                 "gradle/node.gradle",
                 "gradle/repositories.gradle",
@@ -109,7 +110,6 @@ module.exports = yeoman.generators.Base.extend({
                     "typings/index.d.ts",
                     "bower.json",
                     "gulpfile.js",
-                    "package.json",
                     "tsconfig.json",
                     "typings.json",
                     "build.gradle"
@@ -179,7 +179,7 @@ module.exports = yeoman.generators.Base.extend({
                 _this.spawnCommand('git', ['commit', '-am', '\"Initial Commit\"']).on("close", function() {;
                     _this.spawnCommand('git', ['tag', '0.0.0']).on("close", function() {;
                         _this.spawnCommand('./gradlew', ['idea']).on("close", function() {
-                            _this.spawnCommand('npm', ['install'], {cwd: _this.props.slug + "-app"}).on("close", function() {
+                            _this.spawnCommand('npm', ['install']).on("close", function() {
                                 _this.spawnCommand('bower', ['install'], {cwd: _this.props.slug + "-app"}).on("close", function() {
                                     _this.spawnCommand('gulp', ['build'], {cwd: _this.props.slug + "-app"});
                                 });
