@@ -38,7 +38,7 @@ server:
       keyStorePath: var/conf/keyStore.jks
       keyStorePassword: dropwizard-angular-gradle
       validateCerts: false
-  applicationContextPath: /<%= slug %>
+  applicationContextPath: /
   adminConnectors:
     - type: http
       port: 8001

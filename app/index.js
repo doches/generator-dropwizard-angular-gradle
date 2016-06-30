@@ -100,6 +100,7 @@ module.exports = yeoman.generators.Base.extend({
                 ["app", [
                     "src/app.less",
                     "src/app.ts",
+                    "src/helloDirective.ts",
                     "src/index.html",
                     "typings/globals/angular/index.d.ts",
                     "typings/globals/angular/index.d.ts",
@@ -179,7 +180,9 @@ module.exports = yeoman.generators.Base.extend({
                     _this.spawnCommand('git', ['tag', '0.0.0']).on("close", function() {;
                         _this.spawnCommand('./gradlew', ['idea']).on("close", function() {
                             _this.spawnCommand('npm', ['install'], {cwd: _this.props.slug + "-app"}).on("close", function() {
-                                _this.spawnCommand('bower', ['install'], {cwd: _this.props.slug + "-app"});
+                                _this.spawnCommand('bower', ['install'], {cwd: _this.props.slug + "-app"}).on("close", function() {
+                                    _this.spawnCommand('gulp', ['build'], {cwd: _this.props.slug + "-app"});
+                                });
                             });
                         });
                     });
