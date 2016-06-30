@@ -21,7 +21,9 @@
     "angular",
     "dropwizard",
     "gradle",
-    "gulp"
+    "gulp",
+    "bower",
+    "fullstack"
   ],
   "dependencies": {
     "chalk": "^1.1.3",
