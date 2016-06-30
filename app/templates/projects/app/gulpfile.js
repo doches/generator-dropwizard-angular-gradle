@@ -1,8 +1,7 @@
 "use strict";
 
 var Promise = require("bluebird");
-var browserSync = require('browser-sync').create();
-var reload = browserSync.reload;
+
 var del = require("del");
 var es = require("event-stream");
 var fs = require("fs");
@@ -14,12 +13,13 @@ var plugins = require("gulp-load-plugins")();
 var runSequence = require("run-sequence");
 var tsconfigGlob = require("tsconfig-glob");
 var wiredep = require("wiredep");
-var plumber = require('gulp-plumber');
 
 Promise.promisifyAll(mkdirp);
 Promise.promisifyAll(ncp);
 
-var staticFileTypesGlob = [
+var isWatch = false;
+
+var staticFileTypes = [
     "eot",
     "gif",
     "ico",
@@ -28,14 +28,54 @@ var staticFileTypesGlob = [
     "ttf",
     "woff",
     "jpg"
-].map(function (ext) {
+];
+
+var watchErrorHandler = function (err) {
+    if (!isWatch) {
+        console.warn(err);
+    }
+};
+
+var warnMissingFiles = function (files, taskName) {
+    files.forEach(function (file) {
+        if (!fs.existsSync(file)) {
+            plugins.util.log(
+                plugins.util.colors.cyan(taskName) +
+                " " +
+                plugins.util.colors.yellow("WARNING:") +
+                " " +
+                plugins.util.colors.magenta(path.resolve(file)) +
+                " not found.");
+        }
+    });
+};
+
+var staticFileTypesGlob = staticFileTypes.map(function (ext) {
     return "**/*." + ext;
 });
 
+// cleans the build and coverage directories
 gulp.task("clean", function () {
-    return del(["build", "dist"]);
+    return del(["build", "coverage"]);
 });
 
+// lints javascript files in the src directory
+gulp.task("eslint", function () {
+    return gulp.src("src/**/*.js")
+        .pipe(plugins.eslint())
+        .pipe(plugins.eslint.format());
+        // .pipe(plugins.if(!isWatch, plugins.eslint.failAfterError()));
+});
+
+// lints gulpfile.js
+gulp.task("eslint-gulpfile", function () {
+    return gulp.src("gulpfile.js")
+        .pipe(plugins.eslint())
+        .pipe(plugins.eslint.format());
+        // .pipe(plugins.if(!isWatch, plugins.eslint.failAfterError()));
+});
+
+// compiles less into css and lints the css
 gulp.task("less", function () {
     var AUTOPREFIXER_BROWSERS = [
         "> 1%",
@@ -45,15 +85,28 @@ gulp.task("less", function () {
     ];
 
     return gulp.src("src/**/*.less")
+        .pipe(plugins.sourcemaps.init())
         .pipe(plugins.less())
+        // capture errors from the less compiler and suppress when watching
         .on("error", function (err) {
+            // gulp-less is poorly written and will halt the watch pipeline unless
+            // the "end" event is forcefully emitted.
             plugins.util.log("less " + plugins.util.colors.red("Error:") + " " + err.message);
+            /* eslint-disable no-invalid-this */
             this.emit("end");
+            /* eslint-enable no-invalid-this */
         })
+        .pipe(plugins.csslint())
+        .pipe(plugins.csslintLessReporter(path.join("src/**/*.less")))
+        // capture errors from the less reporter and suppress when watching
+        .on("error", watchErrorHandler)
+        .pipe(plugins.autoprefixer(AUTOPREFIXER_BROWSERS))
+        .pipe(plugins.sourcemaps.write())
         .pipe(gulp.dest("build/src"))
         .pipe(plugins.livereload());
 });
 
+// create typescript project outside of task so watches can have incremental builds
 var tsProject = plugins.typescript.createProject({
     removeComments: false,
     noImplicitAny: true,
@@ -62,10 +115,7 @@ var tsProject = plugins.typescript.createProject({
     target: "ES5"
 });
 
-gulp.task("tsconfig", function () {
-    tsconfigGlob({cwd: process.cwd()});
-});
-
+// compiles typescript into javascript
 gulp.task("typescript", function () {
     // create a filter just for *.ts files
     var tsFilter = plugins.filter(["**/*.ts", "!**/*.d.ts"], {
@@ -73,36 +123,42 @@ gulp.task("typescript", function () {
     });
 
     var tsResult = gulp.src([
+        /* eslint-disable indent */
             "typings/**/*.d.ts",
             "src/**/*.ts"
         ])
-        .pipe(plumber())
+        /* eslint-enable indent */
         // filter to just *.ts files
         .pipe(tsFilter)
+        .pipe(plugins.tslint())
+        .pipe(plugins.tslint.report("verbose", {emitError: false}))
+        .pipe(plugins.sourcemaps.init())
         // restore *.d.ts files
         .pipe(tsFilter.restore)
         // compile
         .pipe(plugins.typescript(tsProject))
         // capture errors from the typescript compiler and suppress when watching
-        .on("error", function(err) { console.warn(err); });
+        .on("error", watchErrorHandler);
 
     // merge .js and .d.ts output streams
     return es.merge(tsResult.js, tsResult.dts)
+        .pipe(plugins.sourcemaps.write())
         .pipe(gulp.dest("build/src"));
 });
 
-gulp.task("typescript-all", function () {
-    runSequence(
-        ["tsconfig"],
-        ["typescript"]
-    );
+// read the filesGlob property in tsconfig.json and add all matching
+// files to the files property in tsconfig.json.
+gulp.task("tsconfig", function () {
+    tsconfigGlob({cwd: process.cwd()});
 });
 
+// copies all static files from the src directory
 gulp.task("assets", function () {
     return gulp.src(staticFileTypesGlob, {cwd: "src"})
         .pipe(gulp.dest("build/src"));
 });
 
+// injects required css and javascript into html files
 gulp.task("inject", function () {
     // inject is used here instead of wiredep.stream in order
     // to have more control over the relative paths that are
@@ -115,6 +171,8 @@ gulp.task("inject", function () {
     if (typeof main == "string") {
         main = [main];
     }
+
+    warnMissingFiles(main, "inject");
 
     var js = wiredepFiles.js || [];
     var css = wiredepFiles.css || [];
@@ -131,6 +189,7 @@ gulp.task("inject", function () {
         .pipe(gulp.dest("build/src"));
 });
 
+// copies all files from build/src and dependencies from bower_components into build/tmp
 gulp.task("copy-to-tmp", function () {
     // files are copied from build/src in order to avoid modifying
     // any files in build/src when performing minification.
@@ -155,6 +214,7 @@ gulp.task("copy-to-tmp", function () {
     });
 });
 
+// copies all static files from build/tmp to build/min
 gulp.task("copy-to-min", ["copy-to-tmp"], function () {
     // only copy static files from build/tmp to build/min.
     // all js, html, and css files will be processed by the
@@ -163,6 +223,7 @@ gulp.task("copy-to-min", ["copy-to-tmp"], function () {
         .pipe(gulp.dest("build/min"));
 });
 
+// minifies html, javascript, and css from build/tmp into build/min
 gulp.task("minify", ["copy-to-tmp", "copy-to-min"], function () {
     return gulp.src("build/tmp/*.html")
         .pipe(plugins.usemin({
@@ -180,6 +241,11 @@ gulp.task("minify", ["copy-to-tmp", "copy-to-min"], function () {
                     cacheBuster: false
                 })
             ],
+            html: [
+                plugins.htmlMinifier({
+                    collapseWhitespace: true
+                })
+            ],
             js: [
                 plugins.uglify({
                     preserveComments: "license"
@@ -190,58 +256,67 @@ gulp.task("minify", ["copy-to-tmp", "copy-to-min"], function () {
         .pipe(gulp.dest("build/min"));
 });
 
-gulp.task("publish", function (cb) {
+// runs all tasks
+gulp.task("default", function (cb) {
     runSequence(
         ["build"],
-        ["minify"],
-        cb
-    );
+        cb);
 });
-
-gulp.task("dev", function (cb) {
-    runSequence(
-        ["build"],
-        ["watch"],
-        cb
-    );
-})
 
 gulp.task("build", function (cb) {
     runSequence(
+        ["eslint-gulpfile"],
         ["clean"],
-        ["less", "typescript-all", "assets"],
+        ["tsconfig"],
+        ["assets", "eslint", "less", "typescript"],
         ["inject"],
-        cb
-    );
-})
+        cb);
+});
 
-gulp.task("watch", function () {
+gulp.task("publish", function (cb) {
+    runSequence(
+        ["default"],
+        ["minify"],
+        cb);
+});
+
+// before running watch, make sure all assets are built
+gulp.task("watch", function (cb) {
+    isWatch = true;
+
+    runSequence(
+        ["eslint-gulpfile"],
+        ["assets", "eslint", "less", "typescript"],
+        ["inject"],
+        ["startwatch"],
+        cb);
+});
+
+gulp.task("startwatch", function () {
+    isWatch = true;
+
+    gulp.watch("src/**/*.js", ["eslint"]);
+
+    gulp.watch("gulpfile.js", ["eslint-gulpfile"]);
+
     gulp.watch("src/**/*.less", ["less"]);
 
     gulp.watch([
         "src/**/*.ts",
         "typings/**/*.d.ts"
-    ], ["typescript-all"]);
+    ], ["tsconfig"]);
 
     gulp.watch([
-        "src/*.html",
-        "bower.json"
-    ], ["inject"]);
+        "typings/**/*.d.ts",
+        "src/**/*.ts"
+    ], ["typescript"]);
 
     gulp.watch(staticFileTypesGlob.map(function (glob) {
         return "src/" + glob;
     }), ["assets"]);
 
-    browserSync.init({
-      server: {
-        baseDir: ["./build/src/", "./"]
-      }
-    });
-
-    gulp.watch(['./build/**']).on('change', function(e) {
-        reload();
-    });
-})
+    gulp.watch(["src/*.html", "bower.json"], ["inject"]);
+});
 
 gulp.task("livereload", function () {
     plugins.livereload.listen();

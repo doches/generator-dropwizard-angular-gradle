@@ -36,7 +36,7 @@ flexversion {
 addPrintVersionTask()
 
 allprojects {
-    group 'io.shownotes'
+    group '<%= package %>'
     version flexVersion()
 
     // ============

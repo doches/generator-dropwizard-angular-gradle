@@ -16,8 +16,7 @@ database:
 # The settings below configure the dropwizard-configurable-assets-bundle.
 assets:
   overrides:
-    /: ../../../<%= slug %>-app/build/src
-    /bower_components/: ../../../<%= slug %>-app/bower_components
+    /: web/
   mimeTypes:
     eot: application/vnd.ms-fontobject
     ttf: application/font-sfnt
@@ -38,7 +37,7 @@ server:
       keyStorePath: var/conf/keyStore.jks
       keyStorePassword: dropwizard-angular-gradle
       validateCerts: false
-  applicationContextPath: /<%= slug %>
+  applicationContextPath: /
   adminConnectors:
     - type: http
       port: 8001
