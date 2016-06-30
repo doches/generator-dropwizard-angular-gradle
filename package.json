@@ -6,6 +6,11 @@
     "email": "trevor@texasexpat.net",
     "url": "http://texasexpat.net"
   },
+  "repository": {
+      "type": "git",
+      "url": "https://github.com/doches/generator-dropwizard-angular-gradle"
+  },
+  "bugs": "https://github.com/doches/generator-dropwizard-angular-gradle/issues",
   "homepage": "https://github.com/doches/generator-dropwizard-angular-gradle",
   "description": "Scaffolds out an API served by Java 8 + Dropwizard and a front-end application built using Typescript + Angular",
   "files": [
