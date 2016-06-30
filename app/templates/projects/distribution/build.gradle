@@ -1,0 +1,50 @@
+// =======
+// Plugins
+// =======
+apply from: "$rootDir/gradle/repositories.gradle"
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'application'
+
+mainClassName = "<%= package %>.<%= className %>Application"
+
+// ============
+// Dependencies
+// ============
+dependencies {
+    runtime project(':<%= slug %>-server')
+}
+
+tasks.getByName("distZip") {
+    dependsOn ":<%= slug %>-app:gulp_publish"
+}
+
+distributions {
+    main {
+        contents {
+            into ('var') {
+                from("$projectDir/src/standard/var") {
+                    exclude '**/.gitkeep'
+                    exclude '**/*.log'
+                    exclude 'data/**/*'
+                    includeEmptyDirs true
+                }
+            }
+            into ('web') {
+                from("$projectDir/../<%= slug %>-app/build/min") {
+                    include "**/*"
+                }
+            }
+        }
+    }
+}
+
+// ======================================
+// Configure Eclipse Project Dependencies
+// ======================================
+eclipse {
+    project {
+        referencedProjects '<%= slug %>-server'
+    }
+}

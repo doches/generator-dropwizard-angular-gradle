@@ -1,0 +1,5 @@
+rootProject.name = '<%= slug %>'
+
+include '<%= slug %>-app'
+include '<%= slug %>-server'
+include '<%= slug %>-distribution'

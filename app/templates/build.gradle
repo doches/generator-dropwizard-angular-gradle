@@ -1,0 +1,57 @@
+// =====
+// Build
+// =====
+buildscript {
+    apply from: "$rootDir/gradle/repositories.gradle", to: buildscript
+
+    dependencies {
+        classpath "commons-codec:commons-codec:$commonsCodecVersion"
+        classpath "com.moowork.gradle:gradle-node-plugin:$nodePluginVersion"
+        classpath "com.moowork.gradle:gradle-gulp-plugin:$gulpPluginVersion"
+        classpath "com.palantir:gradle-flexversion:$flexVersion"
+    }
+}
+
+// =======
+// Plugins
+// =======
+apply from: "$rootDir/gradle/repositories.gradle"
+apply plugin: 'java-base'
+apply plugin: 'idea'
+
+// ============
+// Repositories
+// ============
+repositories {
+    mavenCentral()
+}
+
+// ==========
+// Versioning
+// ==========
+apply plugin: 'gradle-flexversion'
+flexversion {
+    useTags = true
+}
+addPrintVersionTask()
+
+allprojects {
+    group 'io.shownotes'
+    version flexVersion()
+
+    // ============
+    // Java Version
+    // ============
+    sourceCompatibility = "1.$jreMinorVersion"
+    targetCompatibility = "1.$jreMinorVersion"
+}
+
+// ====
+// Node
+// ====
+apply from: "$rootDir/gradle/node.gradle"
+
+// ====
+// IDEA
+// ====
+apply from: "$rootDir/gradle/idea.gradle"

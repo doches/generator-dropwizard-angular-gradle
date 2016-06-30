@@ -1,0 +1,36 @@
+apply from: "$rootDir/gradle/node.gradle"
+apply plugin: 'com.moowork.gulp'
+apply plugin: 'java-base'
+
+configurations {
+    web
+}
+
+gulp {
+    bufferOutput true
+}
+
+ext {
+    gulpPublishTask = 'gulp_publish'
+    buildMinDir = "$buildDir/min"
+}
+
+tasks.addRule('Pattern: gulp_<taskname>') { String taskName ->
+    if (taskName.startsWith('gulp_')) {
+        tasks.getByName(taskName).with {
+            dependsOn rootProject.tasks.getByName('setupNpm')
+
+            inputs.dir 'bower_components'
+            inputs.dir 'src'
+            inputs.dir 'test'
+            inputs.dir 'typings'
+            inputs.file '../npm-shrinkwrap.json'
+            inputs.file 'bower.json'
+            inputs.file 'gulpfile.js'
+            outputs.dir "$buildDir/min"
+            outputs.dir "$buildDir/src"
+            outputs.dir "$buildDir/test"
+            outputs.dir "$buildDir/tmp"
+        }
+    }
+}

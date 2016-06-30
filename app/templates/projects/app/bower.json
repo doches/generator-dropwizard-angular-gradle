@@ -1,0 +1,24 @@
+{
+  "name": "<%= name %>",
+  "authors": [],
+  "description": "<%= description %>",
+  "main": [
+    "build/src/**/*.css",
+    "build/src/**/*.js"
+  ],
+  "moduleType": [],
+  "license": "",
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "^1.9.0",
+    "angular": "^1.5.7"
+  }
+}

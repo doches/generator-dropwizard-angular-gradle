@@ -1,0 +1,128 @@
+buildscript {
+    apply from: "$rootDir/gradle/repositories.gradle", to: buildscript
+
+    dependencies {
+        classpath 'commons-codec:commons-codec:1.9'
+        classpath "com.moowork.gradle:gradle-node-plugin:$nodePluginVersion"
+    }
+}
+
+apply plugin: 'com.moowork.node'
+
+// ====================
+// NodeJS Configuration
+// ====================
+node {
+    // Version of node to use.
+    version = nodeVersion
+
+    // Version of npm to use. Version is set in gradle.properties
+    npmVersion = npmVersion
+
+    // Base URL for fetching node distributions (change if you have a mirror).
+    // distBaseUrl = 'http://ivy.yojoe.local/artifactory/nodejs'
+
+    // If true, it will download node using above parameters.
+    // If false, it will try to use globally installed node.
+    download = true
+
+    // Set the work directory for unpacking node
+    workDir = file("${rootProject.buildDir}/nodejs")
+
+    // Set the node_modules directory
+    nodeModulesDir = file("${project.rootDir}")
+}
+
+// ==============================
+// Enable caching of node_modules
+// ==============================
+import org.apache.commons.codec.digest.DigestUtils
+
+ext {
+    nodeModulesDir = 'node_modules'
+    shrinkwrap = file('npm-shrinkwrap.json')
+    npmCache = shrinkwrap.exists() ? new File(
+        new File(System.getProperty('java.io.tmpdir'), "npm-${project.name}"),
+        DigestUtils.sha1Hex(new FileInputStream(project.shrinkwrap)) + '.gradle.tgz') : null
+}
+
+// Caching of node_modules is disabled on Windows.
+// If you would like to re-enable caching, first install `bsdtar` from
+// http://gnuwin32.sourceforge.net/packages/libarchive.htm and add it to your PATH.
+// Then update the `tar` commands below to be `bsdtar`.
+if (project.shrinkwrap.exists() && !System.getProperty('os.name').toLowerCase().contains('windows')) {
+    task setupNpm {
+        dependsOn 'extractNodeModules', 'npmInstall', 'cacheNodeModules'
+    }
+
+    task cacheNodeModules(type: Exec) {
+        dependsOn 'npmInstall'
+
+        onlyIf {
+            !project.npmCache.exists()
+        }
+
+        inputs.file project.shrinkwrap
+        outputs.file project.npmCache.absolutePath
+
+        commandLine 'tar'
+        args 'zcf', project.npmCache.absolutePath, project.nodeModulesDir
+
+        doFirst {
+            project.npmCache.parentFile.mkdirs()
+        }
+
+        doLast {
+            println "node_modules cached to ${project.npmCache.absolutePath}"
+        }
+    }
+
+    task extractNodeModules(type: Exec) {
+        dependsOn 'nodeSetup'
+
+        onlyIf {
+             project.npmCache.exists()
+        }
+
+        inputs.file project.npmCache.absolutePath
+        outputs.dir project.nodeModulesDir
+
+        commandLine 'tar'
+        args 'zxf', project.npmCache.absolutePath
+
+        doFirst {
+            println "Using cached node_modules from ${project.npmCache.absolutePath}"
+        }
+    }
+
+    task cleanNodeModulesCache(type: Delete) {
+        delete project.npmCache.absolutePath
+    }
+
+    tasks.withType(NpmTask) {
+        if (it.name != 'npmInstall' && it.name != 'npmSetup') {
+            dependsOn 'extractNodeModules', 'cacheNodeModules'
+        } else {
+            mustRunAfter 'extractNodeModules'
+            outputs.upToDateWhen {
+                project.npmCache.exists()
+            }
+
+            onlyIf {
+                !project.npmCache.exists()
+            }
+        }
+    }
+} else {
+    task setupNpm {
+        dependsOn 'nodeSetup', 'npmInstall'
+    }
+}
+
+// Ensure that the nodeSetup task only runs when the root project is built
+// This allows the project to be built in parallel (via the --parallel flag)
+// by preventing multiple projects from extracting in the same location
+if (project != rootProject) {
+    tasks.getByName('nodeSetup').onlyIf { false }
+    tasks.getByName('nodeSetup').mustRunAfter(rootProject.tasks.getByName('nodeSetup'))
+}

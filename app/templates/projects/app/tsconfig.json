@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": true
+    },
+    "filesGlob": [
+        "typings/**/*.d.ts",
+        "src/**/*.ts"
+    ],
+    "files": [
+        "typings/globals/angular/index.d.ts",
+        "typings/globals/jquery/index.d.ts",
+        "typings/index.d.ts",
+        "src/app.ts",
+        "src/helloDirective.ts"
+    ],
+    "compileOnSave": false,
+    "atom": {
+        "rewriteTsconfig": true
+    }
+}
