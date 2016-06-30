@@ -1,6 +1,12 @@
 {
   "name": "generator-dropwizard-angular-gradle",
   "version": "0.1.0",
+  "author": {
+    "name": "Trevor Fountain",
+    "email": "trevor@texasexpat.net",
+    "url": "http://texasexpat.net"
+  },
+  "homepage": "https://github.com/doches/generator-dropwizard-angular-gradle",
   "description": "Scaffolds out an API served by Java 8 + Dropwizard and a front-end application built using Typescript + Angular",
   "files": [
     "app"
